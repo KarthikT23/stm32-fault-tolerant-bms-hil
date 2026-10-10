@@ -131,6 +131,15 @@ int main(void)
     n = feed_all(&p, stream, 56, &last);
     check_eq("T-07 resync after a dropped byte (B and C recovered)", n, 2);
 
+    /* T-08: a spurious start byte directly before a good frame */
+    bms_parser_init(&p);
+    {
+        uint8_t spurious = BMS_SOF;
+        feed_all(&p, &spurious, 1, &last);
+    }
+    n = feed_all(&p, golden, 19, &last);
+    check_eq("T-08 good frame after a spurious start byte", n, 1);
+
     printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;
 }
