@@ -9,3 +9,4 @@ venv/
 firmware/bms_node/Drivers/
 firmware/bms_node/Middlewares/
 firmware/bms_node/.settings/
+*.exe

@@ -1,0 +1,15 @@
+PASS  T-01 CRC-16/MODBUS check value
+PASS  T-02 golden frame accepted
+PASS  T-02 golden frame fields decoded
+PASS  T-03 corrupted CRC rejected
+PASS  T-03 crc_err counter
+PASS  T-03 next good frame accepted
+PASS  T-04 bad LEN rejected
+PASS  T-04 len_err counter
+PASS  T-04 next good frame accepted
+PASS  T-05 frame after garbage prefix accepted
+PASS  T-06 three back-to-back frames
+PASS  T-06 last sequence number
+FAIL  T-07 resync after a dropped byte (B and C recovered)  (got 1, expected 2)
+
+1 failure(s)
