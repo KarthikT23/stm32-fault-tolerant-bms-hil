@@ -1,0 +1,8 @@
+Debug/
+Release/
+.metadata/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.bak
