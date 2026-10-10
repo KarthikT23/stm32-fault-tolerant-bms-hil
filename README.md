@@ -15,3 +15,5 @@ Work in progress.
 - `docs/` - requirements, diagrams, test evidence
 
 See `docs/requirements.md` for the interface spec and requirements.
+
+See [docs/cubemx-setup.md](docs/cubemx-setup.md) for the CubeMX configuration and how to rebuild the project from the .ioc.
