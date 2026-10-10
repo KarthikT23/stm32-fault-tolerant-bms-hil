@@ -1,0 +1,17 @@
+PASS  P-01 initial state is INIT
+PASS  P-01 first normal frame -> NORMAL
+PASS  P-02 100 noisy healthy frames stay NORMAL (deviations)
+PASS  P-03 sustained over-temperature -> FAULT, frames  (1, allowed 1..4)
+PASS  P-03 cause is OVERTEMP
+PASS  P-04 sustained over-voltage -> FAULT, frames  (1, allowed 1..4)
+PASS  P-04 cause is OVERVOLT
+PASS  P-05 sustained under-voltage -> FAULT, frames  (1, allowed 1..4)
+PASS  P-05 cause is UNDERVOLT
+PASS  P-06 sustained over-current -> FAULT, frames  (1, allowed 1..4)
+PASS  P-06 cause is OVERCURRENT
+PASS  P-07 FAULT stays latched after values recover
+FAIL  P-08 single-frame temperature spike is ignored  (got FAULT, expected NORMAL)
+FAIL  P-09 single-frame voltage spike is ignored  (got FAULT, expected NORMAL)
+FAIL  P-10 state changes while hovering at the warning threshold  (20, allowed 0..2)
+
+3 failure(s)
