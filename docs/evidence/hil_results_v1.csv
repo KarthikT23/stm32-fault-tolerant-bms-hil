@@ -1,0 +1,6 @@
+time,scenario,verdict,detection_ms,detail
+2026-10-20T16:37:46,normal,PASS,,no state change
+2026-10-20T16:38:06,spike,FAIL,,unexpected change to FAULT at seq 30
+2026-10-20T16:38:19,hover,FAIL,,unexpected change to WARNING at seq 30
+2026-10-20T16:38:31,warning,PASS,8,"first bad frame to WARNING line, limit 400 ms"
+2026-10-20T16:38:51,overtemp,PASS,8,"first bad frame to FAULT line, limit 400 ms"
