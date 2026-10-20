@@ -8,6 +8,7 @@
 #include "main.h"
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "app_wdg.h"
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -57,7 +58,8 @@ void App_LogTask(void *argument)
     (void)argument;
 
     for (;;) {
-        if (xQueueReceive(log_q, &m, portMAX_DELAY) != pdPASS) continue;
+        wd_checkin(WD_LOG);
+        if (xQueueReceive(log_q, &m, pdMS_TO_TICKS(100)) != pdPASS) continue;
         HAL_UART_Transmit(&huart2, (uint8_t *)m.text, m.len, 100);
 
         uint32_t d = dropped;

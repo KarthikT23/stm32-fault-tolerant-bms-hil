@@ -12,6 +12,8 @@
 #include "stream_buffer.h"
 #include <stdio.h>
 #include "app_log.h"
+#include "task.h"
+#include "app_wdg.h"
 
 extern UART_HandleTypeDef huart2;
 
@@ -82,7 +84,19 @@ void App_ParserTaskRun(void)
 
     for (;;) {
         uint8_t b;
-        if (xStreamBufferReceive(rx_stream, &b, 1, portMAX_DELAY) != 1) continue;
+        wd_checkin(WD_PARSER);
+        if (xStreamBufferReceive(rx_stream, &b, 1, pdMS_TO_TICKS(100)) != 1) continue;
+#if SAFECELL_FAULT_INJECT
+        {   /* test hook: the bytes "!HANG" simulate a deadlocked task so the watchdog can be tested */
+            static uint8_t ti;
+            static const char tok[] = "!HANG";
+            if (b == (uint8_t)tok[ti]) ti++; else ti = (b == (uint8_t)tok[0]) ? 1u : 0u;
+            if (ti == sizeof(tok) - 1u) {
+                app_log("INJECT: parser task blocked forever\r\n");
+                vTaskSuspend(NULL);
+            }
+        }
+#endif
         if (!bms_parser_feed(&parser, b, &s)) continue;
 
         bms_protect_update(&prot, &s);

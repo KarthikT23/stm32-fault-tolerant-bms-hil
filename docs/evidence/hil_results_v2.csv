@@ -4,3 +4,4 @@ time,scenario,verdict,detection_ms,detail
 2026-10-20T16:35:38,hover,PASS,,no state change
 2026-10-20T16:35:54,warning,PASS,210,"first bad frame to WARNING line, limit 400 ms"
 2026-10-20T16:36:07,overtemp,PASS,208,"first bad frame to FAULT line, limit 400 ms"
+2026-10-20T16:52:49,hang,PASS,1307,"hang to back in NORMAL, limit 3000 ms, watchdog saw missing=0x01"

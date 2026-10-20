@@ -27,6 +27,7 @@ EXPECT = {
     "hover":    "stays NORMAL (4195/4205 mV flip-flop, no chatter)",
     "warning":  "NORMAL -> WARNING (orange LED) about 300 ms after the 3 s mark",
     "overtemp": "NORMAL -> FAULT cause=OVERTEMP (red LED) about 300 ms after the 3 s mark",
+    "hang":     "parser task blocked at the 3 s mark, watchdog resets the board, back to NORMAL",
 }
 
 
@@ -44,7 +45,7 @@ def apply_scenario(name, seq, cells, temps):
     return cells, temps
 
 LIMIT_MS = 400  # requirement NFR-1: a real fault must be reported within 400 ms
-
+RECOVERY_LIMIT_MS = 3000  # a hung task must be recovered by the watchdog within 3 s
 
 class Monitor:
     """Collects the STATE / PENDING lines the firmware prints, with their arrival times."""
@@ -60,6 +61,12 @@ class Monitor:
             m = re.match(r"\s*(STATE|PENDING) -> (\w+).*?seq=(\d+)", line)
             if m:
                 self.events.append((now, m.group(1), m.group(2), int(m.group(3))))
+            m = re.match(r"\s*BOOT reset_cause=(\w+)", line)
+            if m:
+                self.events.append((now, "BOOT", m.group(1), 0))
+            m = re.match(r"\s*WDG: missing=(\w+)", line)
+            if m:
+                self.events.append((now, "WDG", m.group(1), 0))
 
 
 def evaluate(scenario, events, t_sent):
@@ -67,6 +74,25 @@ def evaluate(scenario, events, t_sent):
     states = [e for e in events if e[1] == "STATE"]
     if not states or states[0][2] != "NORMAL":
         return "FAIL", None, "no initial STATE -> NORMAL line (press RESET before the run)"
+    if scenario == "hang":
+        t_hang = t_sent.get("hang")
+        if t_hang is None:
+            return "FAIL", None, "the hang command was never sent (run longer)"
+        boots = [e for e in events if e[1] == "BOOT" and e[0] > t_hang]
+        if not boots:
+            return "FAIL", None, "no BOOT line after the hang: the board never reset"
+        if boots[0][2] != "IWDG":
+            return "FAIL", None, f"reset cause was {boots[0][2]}, expected IWDG"
+        after = events[events.index(boots[0]) + 1:]      # compare order, not clock time
+        back = [e for e in after if e[1] == "STATE" and e[2] == "NORMAL"]
+        if not back:
+            return "FAIL", None, "board reset but did not return to NORMAL"
+        rec_ms = (back[0][0] - t_hang) * 1000.0
+        wdg = [e[2] for e in events if e[1] == "WDG" and e[0] > t_hang]
+        who = f", watchdog saw missing={wdg[0]}" if wdg else ""
+        if rec_ms > RECOVERY_LIMIT_MS:
+            return "FAIL", rec_ms, f"recovery too slow, limit {RECOVERY_LIMIT_MS} ms{who}"
+        return "PASS", rec_ms, f"hang to back in NORMAL, limit {RECOVERY_LIMIT_MS} ms{who}"
     changes = states[1:]
     if scenario in ("normal", "spike", "hover"):
         if changes:
@@ -150,6 +176,9 @@ def main():
                 frame = frame[:-1] + bytes([frame[-1] ^ 0xFF])  # flip the last CRC byte
             t_sent[seq & 0xFF] = time.perf_counter()
             ser.write(frame)
+            if args.scenario == "hang" and seq == WARMUP:
+                ser.write(b"!HANG")      # test command: the firmware blocks its parser task
+                t_sent["hang"] = time.perf_counter()
             seq += 1
             next_t += PERIOD_S
             while True:                  # poll the port until the next frame is due

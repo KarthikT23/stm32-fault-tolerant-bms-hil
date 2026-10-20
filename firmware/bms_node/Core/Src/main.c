@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "app_uart_rx.h"
 #include "app_log.h"
+#include "app_wdg.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -134,6 +135,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   App_LogInit();
+  App_WdgInit();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -151,6 +153,13 @@ int main(void)
     .priority = (osPriority_t) osPriorityBelowNormal,
   };
   osThreadNew(App_LogTask, NULL, &logTask_attributes);
+
+  static const osThreadAttr_t wdgTask_attributes = {
+    .name = "WdgTask",
+    .stack_size = 512 * 4,
+    .priority = (osPriority_t) osPriorityHigh,
+  };
+  osThreadNew(App_WdgTask, NULL, &wdgTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -428,6 +437,7 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	 wd_checkin(WD_HEARTBEAT);
 	 osDelay(500);
   }
   /* USER CODE END 5 */
