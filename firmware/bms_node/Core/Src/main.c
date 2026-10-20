@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_uart_rx.h"
+#include "app_log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -132,6 +133,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  App_LogInit();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -143,6 +145,12 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  static const osThreadAttr_t logTask_attributes = {
+    .name = "LogTask",
+    .stack_size = 512 * 4,
+    .priority = (osPriority_t) osPriorityBelowNormal,
+  };
+  osThreadNew(App_LogTask, NULL, &logTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

@@ -11,6 +11,7 @@
 #include "FreeRTOS.h"
 #include "stream_buffer.h"
 #include <stdio.h>
+#include "app_log.h"
 
 extern UART_HandleTypeDef huart2;
 
@@ -81,22 +82,23 @@ void App_ParserTaskRun(void)
         if (prot.state != last_state) {              /* log only state changes */
             last_state = prot.state;
             leds_show(prot.state);
-            printf("STATE -> %s cause=%s seq=%u\r\n",
+            app_log("STATE -> %s cause=%s seq=%u\r\n",
                    st_name[prot.state], cause_name[prot.cause], s.seq);
         }
 #ifdef BMS_DEBOUNCE_FRAMES
         if (prot.pending_count > 0u) { /* a frame is asking for a state change but it is not confirmed yet */
-            printf("PENDING -> %s count=%u/%u seq=%u\r\n",
+            app_log("PENDING -> %s count=%u/%u seq=%u\r\n",
                    st_name[prot.pending_state], prot.pending_count,
                    BMS_DEBOUNCE_FRAMES, s.seq);
         }
 #endif
 
         if ((parser.frames_ok % 10u) == 0u) {        /* 1 line per second */
-            printf("RX seq=%u V=%u,%u,%u,%u I=%d T=%d,%d ok=%lu crc_err=%lu\r\n",
-                   s.seq, s.cell_mv[0], s.cell_mv[1], s.cell_mv[2], s.cell_mv[3],
-                   s.current_ma, s.temp_dc[0], s.temp_dc[1],
-                   (unsigned long)parser.frames_ok, (unsigned long)parser.crc_err);
+            app_log("RX seq=%u V=%u,%u,%u,%u I=%d T=%d,%d ok=%lu crc_err=%lu drop=%lu\r\n",
+                    s.seq, s.cell_mv[0], s.cell_mv[1], s.cell_mv[2], s.cell_mv[3],
+                    s.current_ma, s.temp_dc[0], s.temp_dc[1],
+                    (unsigned long)parser.frames_ok, (unsigned long)parser.crc_err,
+                    (unsigned long)App_LogDropped());
         }
     }
 }
