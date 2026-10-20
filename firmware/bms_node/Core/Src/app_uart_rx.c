@@ -23,15 +23,20 @@ static uint16_t old_pos;
    It only copies the new bytes into the stream buffer, so it stays short. */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t pos)
 {
+    (void)pos;                                   /* use the live DMA position instead */
     if (huart->Instance != USART2) return;
+
+    uint16_t head = DMA_BUF_SZ - (uint16_t)__HAL_DMA_GET_COUNTER(huart->hdmarx);
+    if (head >= DMA_BUF_SZ) head = 0;            /* counter just reloaded: wrapped to 0 */
+
     BaseType_t woken = pdFALSE;
-    if (pos > old_pos) {
-        xStreamBufferSendFromISR(rx_stream, &rx_dma_buf[old_pos], pos - old_pos, &woken);
-    } else if (pos < old_pos) {                     /* DMA wrapped around */
+    if (head > old_pos) {
+        xStreamBufferSendFromISR(rx_stream, &rx_dma_buf[old_pos], head - old_pos, &woken);
+    } else if (head < old_pos) {                 /* DMA wrapped around */
         xStreamBufferSendFromISR(rx_stream, &rx_dma_buf[old_pos], DMA_BUF_SZ - old_pos, &woken);
-        if (pos) xStreamBufferSendFromISR(rx_stream, &rx_dma_buf[0], pos, &woken);
+        if (head) xStreamBufferSendFromISR(rx_stream, &rx_dma_buf[0], head, &woken);
     }
-    old_pos = (pos == DMA_BUF_SZ) ? 0 : pos;
+    old_pos = head;                              /* head == old_pos: nothing new, send nothing */
     portYIELD_FROM_ISR(woken);
 }
 

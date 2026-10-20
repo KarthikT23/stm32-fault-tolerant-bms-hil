@@ -171,6 +171,27 @@ int main(void)
     }
     check_range("P-10 state changes while hovering at the warning threshold", changes, 0, 2);
 
+    /* P-11: once in WARNING, hovering just under the threshold must not flip the state back */
+    start_normal(&p);
+    for (i = 0; i < 5; i++) {
+        s = normal_sample(); s.cell_mv[0] = 4210;
+        bms_protect_update(&p, &s);
+    }
+    check_state("P-11 sustained high cell -> WARNING", p.state, BMS_ST_WARNING);
+    prev = p.state;
+    changes = 0;
+    for (i = 0; i < 20; i++) {
+        s = normal_sample();
+        s.cell_mv[0] = (uint16_t)((i % 2) ? 4195 : 4205);
+        bms_protect_update(&p, &s);
+        if (p.state != prev) { changes++; prev = p.state; }
+    }
+    check_range("P-11 state changes while hovering inside the hysteresis band", changes, 0, 0);
+
+    /* P-12: WARNING clears back to NORMAL once the value stays clear of the band */
+    feed_normal(&p, 5);
+    check_state("P-12 warning clears after values recover", p.state, BMS_ST_NORMAL);
+
     printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;
 }

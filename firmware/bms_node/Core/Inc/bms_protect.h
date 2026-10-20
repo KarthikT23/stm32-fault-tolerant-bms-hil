@@ -26,9 +26,16 @@ typedef enum {
 #define BMS_TEMP_FAULT_DC         600
 #define BMS_CURRENT_FAULT_MA    10000
 
+/* v2: debounce and hysteresis */
+#define BMS_DEBOUNCE_FRAMES      3     /* consecutive frames needed to change state */
+#define BMS_CELL_HYST_MV        20     /* warning clears 20 mV inside the threshold */
+#define BMS_TEMP_HYST_DC        20     /* warning clears 2.0 deg C inside the threshold */
+
 typedef struct {
     BmsState_t state;
     BmsFault_t cause;
+    BmsState_t pending_state;   /* state the recent frames are asking for */
+    uint8_t    pending_count;   /* consecutive frames asking for pending_state */
 } BmsProtect_t;
 
 void bms_protect_init(BmsProtect_t *p);

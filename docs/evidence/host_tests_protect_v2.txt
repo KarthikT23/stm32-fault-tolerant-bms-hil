@@ -1,0 +1,20 @@
+PASS  P-01 initial state is INIT
+PASS  P-01 first normal frame -> NORMAL
+PASS  P-02 100 noisy healthy frames stay NORMAL (deviations)
+PASS  P-03 sustained over-temperature -> FAULT, frames  (3, allowed 1..4)
+PASS  P-03 cause is OVERTEMP
+PASS  P-04 sustained over-voltage -> FAULT, frames  (3, allowed 1..4)
+PASS  P-04 cause is OVERVOLT
+PASS  P-05 sustained under-voltage -> FAULT, frames  (3, allowed 1..4)
+PASS  P-05 cause is UNDERVOLT
+PASS  P-06 sustained over-current -> FAULT, frames  (3, allowed 1..4)
+PASS  P-06 cause is OVERCURRENT
+PASS  P-07 FAULT stays latched after values recover
+PASS  P-08 single-frame temperature spike is ignored
+PASS  P-09 single-frame voltage spike is ignored
+PASS  P-10 state changes while hovering at the warning threshold  (0, allowed 0..2)
+PASS  P-11 sustained high cell -> WARNING
+PASS  P-11 state changes while hovering inside the hysteresis band  (0, allowed 0..0)
+PASS  P-12 warning clears after values recover
+
+0 failure(s)
