@@ -20,6 +20,7 @@ persistent fault log).
 | `hil/emulator.py` | PC emulator and pass/fail checker |
 | `docs/requirements.md` | requirements and thresholds |
 | `docs/evidence` | logs and CSV results quoted in the report |
+| `docs/diagrams` | block, use case, sequence, timing, state and flow diagrams (PNG) |
 
 ## Frame format
 SOF 0xA5, LEN 14, SEQ, 4 cell voltages (uint16 mV), current (int16 mA), 2 temperatures (int16, 0.1 C),
@@ -39,6 +40,22 @@ Press RESET, then:
 
 `hang` needs `--duration 12`, `persist` needs `--duration 32`. Every scenario except `persist` first sends
 `!CLEAR` to release a FAULT stored in flash.
+
+## Design diagrams
+
+| Figure | File |
+|---|---|
+| Fig. 1 System block diagram | [D01_block_diagram.png](docs/diagrams/D01_block_diagram.png) |
+| Fig. 2 Use case diagram | [D02_use_case_diagram.png](docs/diagrams/D02_use_case_diagram.png) |
+| Fig. 3 Sequence diagram, overtemp run | [D03_sequence_diagram.png](docs/diagrams/D03_sequence_diagram.png) |
+| Fig. 4 Detection timing | [D04_timing_diagram.png](docs/diagrams/D04_timing_diagram.png) |
+| Fig. 5 Protection state machine | [D05_state_machine.png](docs/diagrams/D05_state_machine.png) |
+| Table 1 Tasks and interrupts | [D06a_task_table.png](docs/diagrams/D06a_task_table.png) |
+| Fig. 6a ParserTask flowchart | [D06b_parser_flowchart.png](docs/diagrams/D06b_parser_flowchart.png) |
+| Fig. 6b Flash boot scan flowchart | [D06c_boot_scan_flowchart.png](docs/diagrams/D06c_boot_scan_flowchart.png) |
+| Fig. 6c WdgTask flowchart | [D06d_watchdog_flowchart.png](docs/diagrams/D06d_watchdog_flowchart.png) |
+
+![System block diagram](docs/diagrams/D01_block_diagram.png)
 
 ## Results (on target, see `docs/evidence/hil_results_final.csv`)
 | Scenario | Result |
