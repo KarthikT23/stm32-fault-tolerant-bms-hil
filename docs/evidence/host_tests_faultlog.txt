@@ -1,0 +1,34 @@
+PASS  FL-01 empty flash: not latched
+PASS  FL-01 empty flash: next slot 0
+PASS  FL-02 append fault ok
+PASS  FL-02 latched after reboot
+PASS  FL-02 cause restored
+PASS  FL-02 not suspect
+PASS  FL-02 snapshot cell 2
+PASS  FL-02 snapshot current (negative)
+PASS  FL-02 snapshot temp 1 (negative)
+PASS  FL-02 snapshot frame seq
+PASS  FL-03 append clear ok
+PASS  FL-03 not latched after clear
+PASS  FL-03 sequence numbers count up
+PASS  FL-04 second fault ok
+PASS  FL-04 latched, new cause
+PASS  FL-04 three valid records
+PASS  FL-05 torn FAULT at cut points 1..7 -> latched (cut points that failed)
+PASS  FL-06 nothing written -> not latched
+PASS  FL-07 torn CLEAR at cut points 0..7 -> still latched (cut points that failed)
+PASS  FL-08 latched with a damaged record after the fault
+PASS  FL-08 clear after the torn one ok
+PASS  FL-08 released by the valid clear
+PASS  FL-08 damaged slot is skipped, not reused
+PASS  FL-09 corrupted record rejected by CRC
+PASS  FL-09 corruption -> latched (fail-safe)
+PASS  FL-10 old damage before a valid clear -> not latched
+PASS  FL-11 programming error reported
+PASS  FL-11 half-written fault -> latched
+PASS  FL-12 filled all slots without error (errors)
+PASS  FL-12 append to a full log returns -2
+PASS  FL-12 full log: next slot equals capacity
+PASS  FL-12 full log: all records still valid
+
+0 failure(s)
