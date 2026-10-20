@@ -84,11 +84,13 @@ void App_ParserTaskRun(void)
             printf("STATE -> %s cause=%s seq=%u\r\n",
                    st_name[prot.state], cause_name[prot.cause], s.seq);
         }
-        if (prot.pending_count > 0u) {                 /* a frame is asking for a state change but it is not confirmed yet */
+#ifdef BMS_DEBOUNCE_FRAMES
+        if (prot.pending_count > 0u) { /* a frame is asking for a state change but it is not confirmed yet */
             printf("PENDING -> %s count=%u/%u seq=%u\r\n",
                    st_name[prot.pending_state], prot.pending_count,
                    BMS_DEBOUNCE_FRAMES, s.seq);
         }
+#endif
 
         if ((parser.frames_ok % 10u) == 0u) {        /* 1 line per second */
             printf("RX seq=%u V=%u,%u,%u,%u I=%d T=%d,%d ok=%lu crc_err=%lu\r\n",
