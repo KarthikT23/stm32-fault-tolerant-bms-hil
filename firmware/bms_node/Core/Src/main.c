@@ -438,7 +438,7 @@ void StartDefaultTask(void *argument)
   for(;;)
   {
 	 wd_checkin(WD_HEARTBEAT);
-	 osDelay(500);
+	 osDelay(100);
   }
   /* USER CODE END 5 */
 }
