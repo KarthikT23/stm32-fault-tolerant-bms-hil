@@ -1,0 +1,2 @@
+time,scenario,verdict,detection_ms,detail
+2026-10-20T20:58:49,persist,PASS,,"FAULT kept across watchdog reset and torn clear, released by a real clear"

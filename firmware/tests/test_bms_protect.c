@@ -192,6 +192,14 @@ int main(void)
     feed_normal(&p, 5);
     check_state("P-12 warning clears after values recover", p.state, BMS_ST_NORMAL);
 
+    /* P-13: a FAULT restored from flash stays latched and healthy frames do not release it */
+    bms_protect_init(&p);
+    bms_protect_restore_fault(&p, BMS_FAULT_OVERTEMP);
+    check_state("P-13 restored state is FAULT", p.state, BMS_ST_FAULT);
+    check_eq("P-13 restored cause", p.cause, BMS_FAULT_OVERTEMP);
+    feed_normal(&p, 20);
+    check_state("P-13 restored FAULT survives healthy frames", p.state, BMS_ST_FAULT);
+
     printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;
 }

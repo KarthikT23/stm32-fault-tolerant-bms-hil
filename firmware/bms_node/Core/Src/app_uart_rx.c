@@ -14,6 +14,7 @@
 #include "app_log.h"
 #include "task.h"
 #include "app_wdg.h"
+#include "app_faultlog.h"
 
 extern UART_HandleTypeDef huart2;
 
@@ -64,6 +65,15 @@ int _write(int fd, char *ptr, int len)              /* printf goes out USART2 */
     return len;
 }
 
+/* Feeds one byte to a command matcher; returns 1 when the whole token has just been seen. */
+static int tok_match(const char *tok, uint8_t *ti, uint8_t b)
+{
+    if (b == (uint8_t)tok[*ti]) (*ti)++;
+    else *ti = (b == (uint8_t)tok[0]) ? 1u : 0u;
+    if (tok[*ti] == '\0') { *ti = 0; return 1; }
+    return 0;
+}
+
 void App_ParserTaskRun(void)
 {
     BmsParser_t parser;
@@ -76,6 +86,15 @@ void App_ParserTaskRun(void)
     bms_parser_init(&parser);
     bms_protect_init(&prot);
 
+    if (App_FaultLogLatched()) {                 /* a FAULT was stored before the reset */
+        bms_protect_restore_fault(&prot, App_FaultLogCause());
+        last_state = BMS_ST_FAULT;
+        leds_show(BMS_ST_FAULT);
+        app_log("RESTORED -> FAULT cause=%s suspect=%u seq=%u\r\n",
+                cause_name[prot.cause], (unsigned)App_FaultLogSuspect(),
+                (unsigned)App_FaultLogSnapSeq());
+    }
+
     rx_stream = xStreamBufferCreate(256, 1);
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;   /* enable the cycle counter */
     DWT->CYCCNT = 0;
@@ -86,6 +105,18 @@ void App_ParserTaskRun(void)
         uint8_t b;
         wd_checkin(WD_PARSER);
         if (xStreamBufferReceive(rx_stream, &b, 1, pdMS_TO_TICKS(100)) != 1) continue;
+        {   /* service command "!CLEAR": release a latched FAULT */
+            static uint8_t ci;
+            if (tok_match("!CLEAR", &ci, b)) {
+                if (prot.state != BMS_ST_FAULT) {
+                    app_log("CLEAR: not in FAULT, ignored\r\n");
+                } else if (App_FaultLogClear() == 0) {   /* release only if the record was stored */
+                    bms_protect_init(&prot);
+                    last_state = BMS_ST_INIT;
+                    leds_show(BMS_ST_INIT);
+                }
+            }
+        }
 #if SAFECELL_FAULT_INJECT
         {   /* test hook: the bytes "!HANG" simulate a deadlocked task so the watchdog can be tested */
             static uint8_t ti;
@@ -94,6 +125,15 @@ void App_ParserTaskRun(void)
             if (ti == sizeof(tok) - 1u) {
                 app_log("INJECT: parser task blocked forever\r\n");
                 vTaskSuspend(NULL);
+            }
+        }
+        {   /* test hook "!TORN": simulate power loss half way through writing a CLEAR */
+            static uint8_t tj;
+            if (tok_match("!TORN", &tj, b)) {
+                app_log("INJECT: torn clear record, resetting\r\n");
+                App_FaultLogTorn();
+                vTaskDelay(pdMS_TO_TICKS(100));          /* let the logger send the line */
+                NVIC_SystemReset();
             }
         }
 #endif
@@ -109,6 +149,7 @@ void App_ParserTaskRun(void)
             app_log("STATE -> %s cause=%s seq=%u lat=%luus\r\n",
                     st_name[prot.state], cause_name[prot.cause], s.seq,
                     (unsigned long)(lat / cyc_per_us));
+            if (prot.state == BMS_ST_FAULT) App_FaultLogRecordFault(prot.cause, &s);
         }
         if (lat > lat_max) lat_max = lat;
 #ifdef BMS_DEBOUNCE_FRAMES

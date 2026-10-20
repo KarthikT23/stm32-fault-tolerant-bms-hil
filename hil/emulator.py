@@ -20,6 +20,7 @@ SOF = 0xA5
 PERIOD_S = 0.1  # 10 Hz
 
 WARMUP = 30  # healthy frames (3 s) before a scenario starts
+PERSIST_HANG, PERSIST_TORN, PERSIST_CLEAR = 60, 160, 260   # frame numbers of each command
 
 EXPECT = {
     "normal":   "stays NORMAL, no STATE line after the first",
@@ -28,6 +29,7 @@ EXPECT = {
     "warning":  "NORMAL -> WARNING (orange LED) about 300 ms after the 3 s mark",
     "overtemp": "NORMAL -> FAULT cause=OVERTEMP (red LED) about 300 ms after the 3 s mark",
     "hang":     "parser task blocked at the 3 s mark, watchdog resets the board, back to NORMAL",
+    "persist":  "FAULT, watchdog reset, still FAULT, torn clear + reset, still FAULT, real clear, NORMAL",
 }
 
 
@@ -36,7 +38,7 @@ def apply_scenario(name, seq, cells, temps):
     if seq >= WARMUP:
         if name == "spike" and seq == WARMUP:
             temps[0] = 650                         # one frame only
-        elif name == "overtemp":
+        elif name == "overtemp" or (name == "persist" and seq < PERSIST_CLEAR):
             temps[0] = 650                         # sustained
         elif name == "warning":
             cells[0] = 4210                        # sustained, above 4200 warn
@@ -67,10 +69,46 @@ class Monitor:
             m = re.match(r"\s*WDG: missing=(\w+)", line)
             if m:
                 self.events.append((now, "WDG", m.group(1), 0))
+            m = re.match(r"\s*RESTORED -> (\w+)", line)
+            if m:
+                self.events.append((now, "RESTORED", m.group(1), 0))
+            m = re.match(r"\s*CLEAR: record #(\d+) stored", line)
+            if m:
+                self.events.append((now, "CLEARED", "OK", int(m.group(1))))
 
 
 def evaluate(scenario, events, t_sent):
     """Returns (verdict, detection latency in ms or None, detail)."""
+    if scenario == "persist":
+        seq_ev = [(e[1], e[2]) for e in events]
+        def idx(kind, val, start=0):
+            for i in range(start, len(seq_ev)):
+                if seq_ev[i] == (kind, val):
+                    return i
+            return None
+        i_fault = idx("STATE", "FAULT")
+        if i_fault is None:
+            return "FAIL", None, "never entered FAULT"
+        i_wdg = idx("BOOT", "IWDG", i_fault)
+        if i_wdg is None:
+            return "FAIL", None, "no watchdog reset after the hang"
+        i_r1 = idx("RESTORED", "FAULT", i_wdg)
+        if i_r1 is None:
+            return "FAIL", None, "after the watchdog reset the board did not restore FAULT"
+        if idx("STATE", "NORMAL", i_wdg + 1) is not None and idx("STATE", "NORMAL", i_wdg + 1) < i_r1:
+            return "FAIL", None, "went to NORMAL after the watchdog reset"
+        i_sw = idx("BOOT", "SOFTWARE", i_r1)
+        if i_sw is None:
+            return "FAIL", None, "no reset after the torn clear"
+        i_r2 = idx("RESTORED", "FAULT", i_sw)
+        if i_r2 is None:
+            return "FAIL", None, "torn clear released the FAULT (fail-safe rule broken)"
+        i_clr = idx("CLEARED", "OK", i_r2)
+        if i_clr is None:
+            return "FAIL", None, "the real clear was not stored"
+        if idx("STATE", "NORMAL", i_clr) is None:
+            return "FAIL", None, "board did not return to NORMAL after the clear"
+        return "PASS", None, "FAULT kept across watchdog reset and torn clear, released by a real clear"
     states = [e for e in events if e[1] == "STATE"]
     if not states or states[0][2] != "NORMAL":
         return "FAIL", None, "no initial STATE -> NORMAL line (press RESET before the run)"
@@ -160,6 +198,8 @@ def main():
 
     ser = serial.Serial(args.port, 115200, timeout=0)
     print(f"scenario {args.scenario}: expect {EXPECT[args.scenario]}", flush=True)
+    if args.scenario != "persist":
+        ser.write(b"!CLEAR")             # release a FAULT latched in flash by an earlier run
     seq = 0
     next_t = time.perf_counter()
     t_start = next_t
@@ -179,6 +219,11 @@ def main():
             if args.scenario == "hang" and seq == WARMUP:
                 ser.write(b"!HANG")      # test command: the firmware blocks its parser task
                 t_sent["hang"] = time.perf_counter()
+            if args.scenario == "persist":
+                cmd = {PERSIST_HANG: b"!HANG", PERSIST_TORN: b"!TORN", PERSIST_CLEAR: b"!CLEAR"}.get(seq)
+                if cmd:
+                    ser.write(cmd)
+                    t_sent[cmd.decode()] = time.perf_counter()
             seq += 1
             next_t += PERIOD_S
             while True:                  # poll the port until the next frame is due

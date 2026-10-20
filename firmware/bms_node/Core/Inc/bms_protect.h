@@ -40,3 +40,4 @@ typedef struct {
 
 void bms_protect_init(BmsProtect_t *p);
 void bms_protect_update(BmsProtect_t *p, const BmsSample_t *s);
+void bms_protect_restore_fault(BmsProtect_t *p, BmsFault_t cause);

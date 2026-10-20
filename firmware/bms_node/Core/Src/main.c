@@ -25,6 +25,7 @@
 #include "app_uart_rx.h"
 #include "app_log.h"
 #include "app_wdg.h"
+#include "app_faultlog.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -136,6 +137,7 @@ int main(void)
   /* add queues, ... */
   App_LogInit();
   App_WdgInit();
+  App_FaultLogInit();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */

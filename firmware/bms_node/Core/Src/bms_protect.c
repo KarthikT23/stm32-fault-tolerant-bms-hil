@@ -84,3 +84,11 @@ void bms_protect_update(BmsProtect_t *p, const BmsSample_t *s)
         p->pending_count = 0;
     }
 }
+/* Used at boot when flash says a FAULT was latched before the reset. */
+void bms_protect_restore_fault(BmsProtect_t *p, BmsFault_t cause)
+{
+    p->state         = BMS_ST_FAULT;
+    p->cause         = cause;
+    p->pending_state = BMS_ST_FAULT;
+    p->pending_count = 0;
+}
