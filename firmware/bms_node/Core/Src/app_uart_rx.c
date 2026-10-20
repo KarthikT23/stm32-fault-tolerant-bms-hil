@@ -20,6 +20,7 @@ extern UART_HandleTypeDef huart2;
 static uint8_t rx_dma_buf[DMA_BUF_SZ];
 static StreamBufferHandle_t rx_stream;
 static uint16_t old_pos;
+static volatile uint32_t isr_cycles;   /* DWT cycle count at the latest UART RX interrupt */
 
 static const char *const st_name[]    = { "INIT", "NORMAL", "WARNING", "FAULT" };
 static const char *const cause_name[] = { "NONE", "OVERVOLT", "UNDERVOLT", "OVERTEMP", "OVERCURRENT" };
@@ -38,6 +39,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t pos)
 {
     (void)pos;                                   /* use the live DMA position instead */
     if (huart->Instance != USART2) return;
+    isr_cycles = DWT->CYCCNT;
 
     uint16_t head = DMA_BUF_SZ - (uint16_t)__HAL_DMA_GET_COUNTER(huart->hdmarx);
     if (head >= DMA_BUF_SZ) head = 0;            /* counter just reloaded: wrapped to 0 */
@@ -65,11 +67,17 @@ void App_ParserTaskRun(void)
     BmsParser_t parser;
     BmsSample_t s;
     BmsProtect_t prot;
+    uint32_t lat;
+    uint32_t lat_max = 0;
+    const uint32_t cyc_per_us = SystemCoreClock / 1000000u;   /* 168 */
     BmsState_t   last_state = BMS_ST_INIT;
     bms_parser_init(&parser);
     bms_protect_init(&prot);
 
     rx_stream = xStreamBufferCreate(256, 1);
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;   /* enable the cycle counter */
+    DWT->CYCCNT = 0;
+    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
     HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_dma_buf, DMA_BUF_SZ);
 
     for (;;) {
@@ -78,13 +86,17 @@ void App_ParserTaskRun(void)
         if (!bms_parser_feed(&parser, b, &s)) continue;
 
         bms_protect_update(&prot, &s);
+        lat = DWT->CYCCNT - isr_cycles;        /* cycles from UART interrupt to decision */
 
         if (prot.state != last_state) {              /* log only state changes */
             last_state = prot.state;
             leds_show(prot.state);
-            app_log("STATE -> %s cause=%s seq=%u\r\n",
-                   st_name[prot.state], cause_name[prot.cause], s.seq);
+            lat = DWT->CYCCNT - isr_cycles;    /* measure again, now including the LED write */
+            app_log("STATE -> %s cause=%s seq=%u lat=%luus\r\n",
+                    st_name[prot.state], cause_name[prot.cause], s.seq,
+                    (unsigned long)(lat / cyc_per_us));
         }
+        if (lat > lat_max) lat_max = lat;
 #ifdef BMS_DEBOUNCE_FRAMES
         if (prot.pending_count > 0u) { /* a frame is asking for a state change but it is not confirmed yet */
             app_log("PENDING -> %s count=%u/%u seq=%u\r\n",
@@ -94,11 +106,12 @@ void App_ParserTaskRun(void)
 #endif
 
         if ((parser.frames_ok % 10u) == 0u) {        /* 1 line per second */
-            app_log("RX seq=%u V=%u,%u,%u,%u I=%d T=%d,%d ok=%lu crc_err=%lu drop=%lu\r\n",
+            app_log("RX seq=%u V=%u,%u,%u,%u I=%d T=%d,%d ok=%lu crc_err=%lu drop=%lu lat_max=%luus\r\n",
                     s.seq, s.cell_mv[0], s.cell_mv[1], s.cell_mv[2], s.cell_mv[3],
                     s.current_ma, s.temp_dc[0], s.temp_dc[1],
                     (unsigned long)parser.frames_ok, (unsigned long)parser.crc_err,
-                    (unsigned long)App_LogDropped());
+                    (unsigned long)App_LogDropped(),
+                    (unsigned long)(lat_max / cyc_per_us));
         }
     }
 }
