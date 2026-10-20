@@ -1,2 +1,8 @@
 time,scenario,verdict,detection_ms,detail
-2026-10-20T20:58:49,persist,PASS,,"FAULT kept across watchdog reset and torn clear, released by a real clear"
+2026-10-20T21:02:46,normal,PASS,,no state change
+2026-10-20T21:03:05,spike,PASS,,no state change
+2026-10-20T21:03:20,hover,PASS,,no state change
+2026-10-20T21:03:34,warning,PASS,209,"first bad frame to WARNING line, limit 400 ms"
+2026-10-20T21:03:51,overtemp,PASS,208,"first bad frame to FAULT line, limit 400 ms"
+2026-10-20T21:04:17,hang,PASS,1209,"hang to back in NORMAL, limit 3000 ms, watchdog saw missing=0x01"
+2026-10-20T21:04:53,persist,PASS,,"FAULT kept across watchdog reset and torn clear, released by a real clear"
